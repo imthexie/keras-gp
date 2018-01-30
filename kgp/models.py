@@ -14,7 +14,7 @@ from keras.engine.topology import _to_list
 from keras.engine.training import _standardize_input_data
 
 from .callbacks import Timer
-from .callbacks import UpdateGP
+from .callbacks import UpdateGP, UpdateSSDKL
 
 # Backend for neural networks
 from keras import backend as K
@@ -70,6 +70,7 @@ class Model(KerasModel):
         return _to_list(h)
 
     def fit(self, X, Y,
+            X_U,
             batch_size=32,
             epochs=1,
             gp_n_iter=1,
@@ -109,8 +110,12 @@ class Model(KerasModel):
                 batch_size=batch_size)
             validation_data = (X_val, Y_val)
 
+        X_U = _standardize_input_data(
+            X_U, self._feed_input_names, self._feed_input_shapes,
+            check_batch_axis=False, exception_prefix='input')
         # Setup GP updates
-        update_gp = UpdateGP(ins=(X, Y),
+        update_gp = UpdateSSDKL(ins=(X, Y),
+                             unlabeled_ins=X_U,
                              val_ins=validation_data,
                              batch_size=batch_size,
                              gp_n_iter=gp_n_iter,

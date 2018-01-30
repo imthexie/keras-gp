@@ -86,8 +86,49 @@ class UpdateGP(Callback):
             H_val = self.model.transform(X_val, self.batch_size)
             for gp, h, y in zip(self.model.output_gp_layers, H_val, Y_val):
                 nlml, preds = gp.backend.eval_predict(h, verbose=self.verbose)
-                logs['val_nlml'], logs['val_mse'] = nlml, MSE(y, preds)
+                logs['val_nlml'], logs['val_loss'] = nlml, MSE(y, preds)
 
+
+class UpdateSSDKL(UpdateGP):
+
+    def __init__(self, ins, unlabeled_ins, val_ins=None,
+                 batch_size=128, gp_n_iter=1, verbose=0):
+        self.training_data = ins
+        self.unlabeled_data = unlabeled_ins
+        self.validation_data = val_ins
+        self.batch_size = batch_size
+        self.gp_n_iter = gp_n_iter
+        self.verbose = verbose
+
+    def on_epoch_begin(self, epoch, logs=None):
+        logs = logs if logs is not None else {}
+
+        X, Y = self.training_data
+        X_U = self.unlabeled_data
+
+        # Do forward pass
+        H = self.model.transform(X, self.batch_size, learning_phase=1.)
+        H_U = self.model.transform(X_U, self.batch_size, learning_phase=1.)
+
+        # Update GPs
+        gp_update_elapsed = []
+        for gp, h, y, h_u in zip(self.model.output_gp_layers, H, Y, H_U):
+            # Update GP data (and grid if necessary)
+            gp.backend.update_data('tr', h, y, verbose=self.verbose)
+            gp.backend.update_data('tmp', h_u, verbose=self.verbose)
+            if gp.update_grid and (epoch % gp.update_grid == 0):
+                gp.backend.update_grid('tr', verbose=self.verbose)
+
+            # Train GP & get derivatives
+            with elapsed_timer() as elapsed:
+                gp.hyp = gp.backend.train(self.gp_n_iter, verbose=self.verbose)
+                gp.dlik_dh = gp.backend.get_dlik_dx('tr', verbose=self.verbose)
+            gp_update_elapsed.append(elapsed())
+
+            # Compute MSE and NLML
+            nlml, preds = gp.backend.eval_predict(h)
+            gp.nlml, gp.mse = nlml, MSE(y, preds)
+        logs['gp_update_elapsed'] = np.mean(gp_update_elapsed)
 
 class Timer(Callback):
     """Simply records time for each batch and epoch.

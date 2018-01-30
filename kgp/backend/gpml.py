@@ -23,7 +23,7 @@ _gp_predict_grid = """
 [fmu fs2 ymu ys2   ] = post.predict(X_tst);
 """
 _gp_dlik = """
-[dlik_dx           ] = dlik(hyp, {mean}, {cov}, {lik}, {dcov}, {X}, {y});
+[dlik_dx           ] = dlik(hyp, {mean}, {cov}, {lik}, {dcov}, {X}, {y}, opt, {xs});
 """
 _gp_create_grid = """
 xg = covGrid('create', {X}, eq, k);
@@ -106,7 +106,7 @@ class GPML(object):
             self.config['mean'] = "{@%s}" % mean
         else:
             self.config['mean'] = '{@%s, %s}' % (mean, ', '.join(str(e) for e in mean_args))
-        
+
         self.config['inf']  = "{@(varargin) %s(varargin{:}, opt)}" % inf
         self.config['dlik'] = "@(varargin) %s(varargin{:}, opt)" % dlik
 
@@ -118,8 +118,8 @@ class GPML(object):
             if cov_args is None:
                 cov = ','.join(input_dim * ['{@%s}' % cov])
             else:
-                cov = ','.join(input_dim * ['{@%s, ' % cov + 
-                                            ', '.join(str(e) for e in cov_args) + 
+                cov = ','.join(input_dim * ['{@%s, ' % cov +
+                                            ', '.join(str(e) for e in cov_args) +
                                             '}'])
             if input_dim > 1:
                 cov = '{' + cov + '}'
@@ -201,7 +201,7 @@ class GPML(object):
         """
         assert which_set in {'tr', 'tst', 'val', 'tmp'}
         X_name, y_name = 'X_' + which_set, 'y_' + which_set
-        self.config.update({'X': X_name, 'y': y_name})
+        self.config.update({'X': X_name, 'y': y_name, 'xs': 'X_tmp'})
         self.eng.eval(_gp_dlik.format(**self.config), verbose=verbose)
         dlik_dx = self.eng.pull('dlik_dx')
         return dlik_dx

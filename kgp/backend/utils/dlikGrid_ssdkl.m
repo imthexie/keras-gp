@@ -1,7 +1,6 @@
-function dlik = dlikGrid(hyp, mean, cov, lik, dcov, x, y, opt, xs)
+function dlik = dlikGrid_ssdkl(hyp, mean, cov, lik, dcov, x, y, opt, xs)
 % dlikGrid   Derivative of the log marginal likelihood w.r.t. inputs.
 %            Uses the MSGP approximations for computing kernel inverses.
-
 % -----------------------------------------------------------------------------
 % Do all the necessary parameter extraction as infGrid does.
 % -----------------------------------------------------------------------------
@@ -37,5 +36,6 @@ if isequal(lstr,'likGauss'), inf = @infGaussLik; else inf = @infLaplace; end
 % -----------------------------------------------------------------------------
 
 % Construct the derivative of interest
-dlik = deriv_x(post.alpha, hP, K, xg, mean, hyp, x, deg);
+dlik = deriv_x_ssdkl(post.alpha, hP, K, xg, mean, hyp, x, deg, cov, lik, y, opt, xs, p, ng, Dg, N, D, ndcovs);
 end
+

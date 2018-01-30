@@ -40,6 +40,7 @@ def train(model, data,
     X_train, y_train = data['train']
     X_test, y_test = data['test']
     validation_data = data['valid'] if 'valid' in data else None
+    X_unlabeled = data['unlabeled'] if 'unlabeled' in data else None
     callbacks = callbacks or []
 
     # Make sure the checkpoints directory exists
@@ -61,7 +62,7 @@ def train(model, data,
         sys.stdout.write("Training...\n")
         sys.stdout.flush()
 
-    history = model.fit(X_train, y_train, validation_data=validation_data,
+    history = model.fit(X_train, y_train, X_unlabeled, validation_data=validation_data,
                         batch_size=batch_size, epochs=epochs,
                         callbacks=callbacks, verbose=verbose,
                         **fit_kwargs)
